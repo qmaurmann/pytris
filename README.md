@@ -1,20 +1,22 @@
-pytris
+Pytris
 ======
 
-Tetris clone in Python/GTK/Cairo
+Tetris clone in Python 2.7.3 using GTK/Cairo (requires GTK 2.0). Tested in Ubuntu 12.04.
 
-Over half way to completion. The L, J, and T pieces have been implemented, and basic scoring/row clearing.
+Play a game of Tetris by running
 
-A few obvious TODOs:
+    python tetris.py
 
-* Four additional types of pieces (I, S, Z, O)
+on the command line. Pieces are controlled with the arrow keys and the space bar (to drop a piece to the bottom row).
 
-* Hard drop (space)
+The scoring scheme is taken from http://tetris.wikia.com/wiki/Scoring
 
-* Timer automatically moves the pieces down
+If the code bears superficial similarity to the code for the Snake game at http://zetcode.com/gui/pygtk/snake/ it is because I used that Snake game as a template for interacting with GTK.
 
-* Some resizing to make it look nicer
+The game is fully functional, though a small amount of "polishing" remains to be done in the following areas:
 
-* Additional points for soft/hard drop?
+* Beautifying the GUI
 
-* General cleanup and documentation, esp of the "abstract" classes
+* Cleaning up code
+
+* Improving docstrings
