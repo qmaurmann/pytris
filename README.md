@@ -3,4 +3,18 @@ pytris
 
 Tetris clone in Python/GTK/Cairo
 
-Figured out GTK/Cairo well enough to get a box to run around the screen when you press arrow keys. That's like 90% of the difficulty of this project, right?
+Over half way to completion. The L, J, and T pieces have been implemented, and basic scoring/row clearing.
+
+A few obvious TODOs:
+
+* Four additional types of pieces (I, S, Z, O)
+
+* Hard drop (space)
+
+* Timer automatically moves the pieces down
+
+* Some resizing to make it look nicer
+
+* Additional points for soft/hard drop?
+
+* General cleanup and documentation, esp of the "abstract" classes
