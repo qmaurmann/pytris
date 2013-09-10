@@ -1,13 +1,13 @@
 """This module defines the seven tetris piece types L, J, T, I, S, Z, and O
 with various rotate and move methods; see documentation for abstract Piece
 class. Two other abstract classes are defined to handle different rotation
-schemes; types L, J, and T rotate clockwise with period 4 (so extend abstract
-class CenteredPiece), while types I, S, and Z "rotate" with period 2 (so
-extend abstract class Period2Piece). Type O defines its own rotation scheme,
-by not rotating at all.
+schemes; types L, J, and T rotate clockwise with period 4 around a particular
+square (so extend abstract class CenteredPiece), while types I, S, and Z
+"rotate" with period 2 (so extend abstract class Period2Piece). Type O defines
+its own rotation scheme, by not rotating at all.
 
-Module also exports the useful tuple_add function, as well as a list ALL_TYPES
-of all seven concrete piece classes.
+Module also exports the useful tuple_add function, as well as a list
+CONCRETE_TYPES of all seven concrete piece classes.
 
 @author Quinn Maurmann
 """
@@ -17,7 +17,6 @@ def tuple_add(s, t):
     a, b = s
     c, d = t
     return (a+c, b+d)
-
 
 
 class Piece(object):
@@ -48,12 +47,13 @@ class Piece(object):
         conjunction with test_move."""
         self.shift = tuple_add(self.shift, delta)
 
+
 class CenteredPiece(Piece):
     """Abstract base class for L, J, and T pieces; no constructor. Factors
     out the common "rotate" functionality, defining test_rotate and
     confirm_rotate in terms of clockwise rotation around base point (0, 0).
 
-    Concrete subclasses need only initialize base, shift, and color
+    Concrete subclasses must still initialize base, shift, and color
     variables."""
     def test_rotate(self):
         return [tuple_add((-y, x), self.shift) for x, y in self.base]
@@ -78,6 +78,7 @@ class TPiece(CenteredPiece):
         self.base = ((-1, 0), (0, 0), (1, 0), (0, 1))
         self.shift = (4, 0)
         self.color = (1, 1, 0)  # yellow
+
 
 class Period2Piece(Piece):
     """Abstract base class for S, Z, I pieces. Factors out the common "rotate"
@@ -140,6 +141,4 @@ class OPiece(Piece):
         pass
 
 
-
-
-ALL_TYPES = [LPiece, JPiece, TPiece, IPiece, SPiece, ZPiece, OPiece]
+CONCRETE_TYPES = [LPiece, JPiece, TPiece, IPiece, SPiece, ZPiece, OPiece]

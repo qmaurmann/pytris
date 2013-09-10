@@ -12,6 +12,9 @@ Main: a window containing a Board, a NextPieceDisplay, and other components
     relevant to the game state. The Board actually controls what happens to
     these components during game play.
 
+Also defines an abstract class SquarePainter (extended by both Board and
+NextPieceDisplay), and a convenience function styled_set_label_text.
+
 @author Quinn Maurmann
 """
 
@@ -21,7 +24,7 @@ import gtk
 import random
 
 import tetris_pieces
-from tetris_pieces import tuple_add
+tuple_add = tetris_pieces.tuple_add  # too useful to call by namespace
 
 DOT_SIZE = 30
 ROWS = 18
@@ -36,23 +39,22 @@ class SquarePainter(gtk.DrawingArea):
 
     def paint_square(self, pos, color, cr):
         """Paints a square on the grid at a particular (int, int) position.
-        Color is given as an RGB triple (of floats between 0 and 1); cr is a
-        Cairo context."""
+        Color is given as an RGB triple (of floats between 0 and 1); cr is the
+        Cairo context. Used only in the expose methods of Board and
+        NextPieceDisplay"""
         cr.set_source_rgb(*color)
         i, j = pos
         cr.rectangle(i*DOT_SIZE+1, j*DOT_SIZE-1, DOT_SIZE-2, DOT_SIZE-2)
         cr.fill()
 
 
-
 class Board(SquarePainter):
-    """Board is basically completely responsible for handling game logic and
-    displaying state."""
+    """Board is responsible for handling all game logic and displaying
+    state."""
 
     def __init__(self, next_piece_display, level_display, lines_display,
                  score_display):
         super(Board, self).__init__()
-        #self.modify_bg(gtk.STATE_NORMAL, gtk.gdk.Color(0,0,0))
         self.set_size_request(COLS*DOT_SIZE, ROWS*DOT_SIZE)
         self.connect("expose-event", self.expose)
 
@@ -66,12 +68,15 @@ class Board(SquarePainter):
         self.score = 0
         self.over = False
 
-        self.increment_level()  # starts timer, too
+        self.increment_level()  # formats label and starts timer
+        self.increment_lines(0)  # formats label
+        self.increment_score(0)  # formats label
         self.curr_piece = self.next_piece_display.get_piece()
         self.locked_squares = {}  # (int,int):color dictionary
 
     def expose(self, widget, event):
-        """Paint current piece and all locked squares."""
+        """Paint current piece and all locked squares; should only be called
+        via self.queue_draw."""
         cr = widget.window.cairo_create()
         cr.set_source_rgb(0, 0, 0)
         cr.paint()
@@ -79,11 +84,17 @@ class Board(SquarePainter):
             self.paint_square(pos, color, cr)
         for pos in self.curr_piece.occupying():
             self.paint_square(pos, self.curr_piece.color, cr)
-        if self.over:  # easiest to put this here
-            cr.select_font_face('Sans')
-            cr.set_font_size(45) # HACK: doesn't scale
-            cr.move_to(10, 225)  # HACK: doesn't scale
-            cr.set_source_rgb(1, 1, 1)
+        ### Easiest to put "GAME OVER" message here ###
+        if self.over:
+            cr.select_font_face('Sans', cairo.FONT_SLANT_NORMAL,
+                cairo.FONT_WEIGHT_BOLD)
+            ### HACK: The following doesn't scale with DOT_SIZE ###
+            cr.set_font_size(41)
+            cr.move_to(10, 200)
+            cr.set_source_rgb(0, 0, 0)  # dark drop-shadow
+            cr.show_text('GAME OVER')
+            cr.move_to(12, 202)
+            cr.set_source_rgb(.82, .82, .82)  # light main text
             cr.show_text('GAME OVER')
             cr.stroke()
 
@@ -113,11 +124,11 @@ class Board(SquarePainter):
         """Drop (and lock) curr_piece as far as possible, granting points
         equal to the distance of the drop."""
         if self.over: return
-        delta = (0, 0)  # make this as big as possible
+        delta = (0, 0)  # now make this as big as possible
         while True:
-            delta_ = tuple_add(delta, (0, 1))
-            if self.can_move_curr_piece(delta_):
-                delta = delta_
+            new_delta = tuple_add(delta, (0, 1))
+            if self.can_move_curr_piece(new_delta):
+                delta = new_delta
             else:
                 break
         self.increment_score(delta[1])
@@ -167,30 +178,33 @@ class Board(SquarePainter):
             elif j < lo:
                 new_ls[(i, j+d)] = color
         self.locked_squares = new_ls
+        self.increment_lines(d)
         self.increment_score(self.level*{1:40, 2:100, 3:300, 4:1200}[d])
-        self.lines += d
-        self.lines_display.set_text("Lines: "+str(self.lines))
         if self.level < self.lines // 10 + 1:
             self.increment_level()
 
+    def increment_lines(self, d):
+        """Increment lines by d, and change the label."""
+        self.lines += d
+        styled_set_label_text(self.lines_display, "Lines:  "+str(self.lines))
+
     def increment_score(self, x=1):
-        """Increment the score by x"""
+        """Increment score by x, and change the label."""
         self.score += x
-        self.score_display.set_text("Score: "+str(self.score))
+        styled_set_label_text(self.score_display, "Score:  "+str(self.score))
 
     def increment_level(self):
-        """Increment the level by 1. Call make_timer to make an on_timer
-        callback for the current level, and give it to glib.timeout_add with
-        (shortening) delay."""
+        """Increment level by 1, and change the label. Also call make_timer
+        and hook up the resulting function with glib.timeout_add, to be
+        called  every 2.0/(level+3) seconds."""
         self.level += 1
-        self.level_display.set_text("Level: "+str(self.level))
+        styled_set_label_text(self.level_display, "Level:  "+str(self.level))
         glib.timeout_add(2000//(self.level+3), self.make_timer(self.level))
     
     def make_timer(self, lev):
         """Creates a callback function on_timer, which moves current piece
         down (without granting a point). If the current level moves beyond
-        lev, then on_timer will stop working, but a new one will be created
-        in the call to increment_level above."""
+        lev, then on_timer will stop working, and will need to be replaced."""
         def on_timer():
             if (lev == self.level) and not self.over:  # finds lev in scope
                 self.move_curr_piece((0, 1))
@@ -216,7 +230,7 @@ class NextPieceDisplay(SquarePainter):
         """Displays the next piece; should only be called via
         self.queue_draw."""
         cr = widget.window.cairo_create()
-        cr.set_source_rgb(0, 0, 0)
+        cr.set_source_rgb(0.05, 0.05, 0.05)
         cr.paint()
         for pos in self.next_piece.occupying():
             self.paint_square(tuple_add(pos, (-1, 1)),
@@ -224,7 +238,7 @@ class NextPieceDisplay(SquarePainter):
 
     def create_piece(self):
         """A Piece factory."""
-        p_type = random.choice(tetris_pieces.ALL_TYPES)
+        p_type = random.choice(tetris_pieces.CONCRETE_TYPES)
         return p_type()
 
     def get_piece(self):
@@ -239,19 +253,12 @@ class NextPieceDisplay(SquarePainter):
 
 
 class Main(gtk.Window):
-    """Main window. Gets everything started. Also passes keystrokes to the
-    Board."""
+    """Main window. Contains a Board and other relevant display objects. Is
+    not responsible for any in-game control beyond passing simple instructions
+    to the Board on keystroke events."""
 
     def __init__(self):
         super(Main, self).__init__()
-
-        self.next_piece_display = NextPieceDisplay()
-        self.level_display = gtk.Label("Level 1")
-        self.lines_display = gtk.Label("Lines: 0")
-        self.score_display = gtk.Label("Score: 0")
-
-        self.board = Board(self.next_piece_display, self.level_display,
-                           self.lines_display, self.score_display)
 
         self.set_title("Tetris")
         self.set_resizable(False)
@@ -259,14 +266,36 @@ class Main(gtk.Window):
         self.connect("destroy", gtk.main_quit)
         self.connect("key-press-event", self.on_key_down)
 
-        self.hbox = gtk.HBox()
+        ### Create and reformat labels ###
+        self.next_piece_words = gtk.Label("Undefined")
+        self.level_display = gtk.Label("Undefined")
+        self.lines_display = gtk.Label("Undefined")
+        self.score_display = gtk.Label("Undefined")
+        self.next_piece_words.set_alignment(.2, .4)
+        self.level_display.set_alignment(.2, 0)
+        self.lines_display.set_alignment(.2, 0)
+        self.score_display.set_alignment(.2, 0)
+        styled_set_label_text(self.next_piece_words, "Next Piece:")
+        ### Note: Board automatically fixes other three labels ###
+
+        self.next_piece_display = NextPieceDisplay()
+        self.board = Board(self.next_piece_display, self.level_display,
+                           self.lines_display, self.score_display)
+
+        self.hbox = gtk.HBox()  # split screen into 2 panels
         self.add(self.hbox)
-        self.hbox.add(self.board)
+        self.hbox.add(self.board)  # left panel is Board
 
-        self.vbox = gtk.VBox()
-        #self.vbox.set_border_width(1)
-        self.hbox.add(self.vbox)
+        self.vbox = gtk.VBox() # right panel has everything else in a VBox
 
+        ### Have to wrap VBox in EventBox to change BG color ###
+        self.vbox_wrapper = gtk.EventBox()
+        self.vbox_wrapper.add(self.vbox)
+        self.vbox_wrapper.modify_bg(gtk.STATE_NORMAL,
+                                    gtk.gdk.Color(0.05, 0.05, 0.05))
+        self.hbox.add(self.vbox_wrapper)
+
+        self.vbox.add(self.next_piece_words)
         self.vbox.add(self.next_piece_display)
         self.vbox.add(self.level_display)
         self.vbox.add(self.lines_display)
@@ -286,6 +315,17 @@ class Main(gtk.Window):
             self.board.move_curr_piece((0, 1), point=True)
         elif key == gtk.keysyms.space:
             self.board.drop_curr_piece()
+
+
+
+def styled_set_label_text(label, text):
+    """Set the text of a gtk.Label with the preferred markup scheme. (Simple
+    enough not to be worth extending gtk.Label just for this method.)"""
+    front = "<b><span foreground='#AAAAAA' size='large'>"
+    end = "</span></b>"
+    label.set_markup(front+text+end)
+
+
 
 if __name__ == "__main__":
     Main()
