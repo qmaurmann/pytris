@@ -14,3 +14,7 @@ The current piece falls one square every 2/(3+L) seconds, where L is the current
 When lines are cleared on level L, the player is awarded L times 40, 100, 300, or 1200 points, depending on whether 1, 2, 3, or 4 lines were cleared. When a player voluntarily lowers the current piece (with either down arrow or space bar), the player is awarded points equal to the distance lowered (independent of the level). This scoring scheme is taken from http://tetris.wikia.com/wiki/Scoring
 
 Finally, if the code bears superficial similarity to the code for the Snake game at http://zetcode.com/gui/pygtk/snake/ it is because I used that Snake game as a template for interacting with GTK.
+
+Screenshot:
+
+<img src='https://docs.google.com/file/d/0Bwvfx_iVO6cNUW5lS2dVZG5KcHM/edit'>

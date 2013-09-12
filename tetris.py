@@ -18,6 +18,8 @@ NextPieceDisplay), and a convenience function styled_set_label_text.
 @author Quinn Maurmann
 """
 
+import pygtk
+pygtk.require("2.0")
 import cairo
 import glib
 import gtk
@@ -34,8 +36,6 @@ COLS = 10
 class SquarePainter(gtk.DrawingArea):
     """Abstract SquarePainter class factors out the ability to paint squares
     on a grid. Extended by both the Board and NextPieceDisplay classes."""
-    def __init__(self):
-        super(SquarePainter, self).__init__()
 
     def paint_square(self, pos, color, cr):
         """Paints a square on the grid at a particular (int, int) position.
@@ -72,7 +72,8 @@ class Board(SquarePainter):
         self.increment_lines(0)  # formats label
         self.increment_score(0)  # formats label
         self.curr_piece = self.next_piece_display.get_piece()
-        self.locked_squares = {}  # (int,int):color dictionary
+        self.locked_squares = {}  # (int,int): color dictionary
+
 
     def expose(self, widget, event):
         """Paint current piece and all locked squares; should only be called
@@ -165,21 +166,19 @@ class Board(SquarePainter):
     def clear_rows(self):
         """Clear any full rows, modifying the variables locked_squares,
         level, lines, and score as appropriate."""
+        ### Previous version had a bug, in that it assumed the set of ###
+        ### indices of full rows had to be a contiguous sequence! ###
         full_rows = [j for j in range(ROWS) if all(
                          (i, j) in self.locked_squares for i in range(COLS))]
         if not full_rows: return
-        lo = min(full_rows)
-        hi = max(full_rows)
-        d = hi-lo+1
-        new_ls = {}
-        for (i,j), color in self.locked_squares.iteritems():
-            if j > hi:
-                new_ls[(i, j)] = color
-            elif j < lo:
-                new_ls[(i, j+d)] = color
-        self.locked_squares = new_ls
+        ### Calculate how for to drop each other row, and do it ###
+        drop = {j: len([k for k in full_rows if k > j]) for j in range(ROWS)}
+        self.locked_squares = {(i, j+drop[j]): color for (i, j), color in
+                            self.locked_squares.items() if j not in full_rows}
+        ### Now just update score, etc. ###
+        d = len(full_rows)
         self.increment_lines(d)
-        self.increment_score(self.level*{1:40, 2:100, 3:300, 4:1200}[d])
+        self.increment_score(self.level*{1: 40, 2: 100, 3: 300, 4: 1200}[d])
         if self.level < self.lines // 10 + 1:
             self.increment_level()
 
