@@ -17,4 +17,4 @@ Finally, if the code bears superficial similarity to the code for the Snake game
 
 Screenshot:
 
-<img src='https://docs.google.com/file/d/0Bwvfx_iVO6cNUW5lS2dVZG5KcHM/edit'>
+<img src='http://i.imgur.com/ZYHEkN0.png'>
